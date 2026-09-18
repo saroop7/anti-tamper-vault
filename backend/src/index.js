@@ -5,6 +5,7 @@ import { initDb } from "../db.js";
 import { router as eventsRouter } from "../routes/events.js";
 import { router as usersRouter } from "../routes/users.js";
 import { router as enrollmentsRouter } from "../routes/enrollments.js";
+import { router as enrollmentRequestsRouter } from "../routes/enrollmentRequests.js";
 dotenv.config();
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json({ limit: "5mb" }));
 app.use("/events", eventsRouter);
 app.use("/users", usersRouter);
 app.use("/enrollments", enrollmentsRouter);
+app.use("/enrollment-requests", enrollmentRequestsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;

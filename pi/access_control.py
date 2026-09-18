@@ -22,6 +22,7 @@ import fingerprint_auth
 import face_auth
 import backend_client
 import tamper_monitor
+import enrollment_worker
 import tft_display
 from time_window import is_within_window
 
@@ -103,6 +104,7 @@ def main():
           f"windows={config.ACCESS_WINDOWS}, device_id={config.DEVICE_ID}")
     tamper_monitor.start()  # RTC/TFT clock + continuous accelerometer watch,
                              # runs independently of the button-triggered flow below
+    enrollment_worker.start()  # polls for frontend-triggered "add new user" requests
     while True:
         gpio_io.wait_for_request()
         try:

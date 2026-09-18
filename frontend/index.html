@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anti Tamper Vault</title>
+<script>
+  // Applied before first paint so there's no flash of the wrong theme.
+  // Falls back to the OS preference if the visitor hasn't picked one yet.
+  (function () {
+    const saved = localStorage.getItem("theme");
+    const theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
 <style>
   /* ---- design tokens -------------------------------------------------
      Direction: a forensic evidence-ledger console, not a SaaS dashboard.
@@ -18,94 +27,138 @@
     --surface2: #1A2333;
     --line:     #263145;
     --text:     #EAEFF6;
-    --muted:    #7C8CA6;
-    --accent:   #4C8DFF;   /* professional blue — primary actions */
-    --secure:   #2FB088;   /* integrity intact */
-    --tamper:   #E5484D;   /* tamper detected / verification failed */
-    --pending:  #D9A441;   /* off-chain / awaiting anchor */
+    --muted:    #8A97AD;
+    --accent:   #0A84FF;   /* system blue — primary actions */
+    --secure:   #30D18A;   /* integrity intact */
+    --tamper:   #FF6961;   /* tamper detected / verification failed */
+    --pending:  #E8B339;   /* off-chain / awaiting anchor */
+    --header-bg: rgba(19, 26, 38, .72);
     --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
-    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --ink:      #F2F3F7;
+    --surface:  #FFFFFF;
+    --surface2: #F5F6F9;
+    --line:     #E1E3E9;
+    --text:     #1D1D1F;
+    --muted:    #6E6E76;
+    --accent:   #007AFF;
+    --secure:   #12875A;
+    --tamper:   #D6362B;
+    --pending:  #A0680C;
+    --header-bg: rgba(255, 255, 255, .72);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: antialiased; }
   body {
     background: var(--ink);
     color: var(--text);
     font-family: var(--sans);
-    line-height: 1.5;
-    padding: 28px clamp(16px, 4vw, 48px);
-    max-width: 1000px;
+    font-size: 15px;
+    line-height: 1.47;
+    letter-spacing: -0.006em;
     margin: 0 auto;
+    max-width: 1000px;
+    transition: background .15s, color .15s;
   }
+  main, header, .status, .controls, .verdict, h2, .filters, .chain, footer {
+    padding-left: clamp(16px, 4vw, 48px);
+    padding-right: clamp(16px, 4vw, 48px);
+  }
+  .theme-toggle {
+    font-size: 13px; font-weight: 590;
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    height: 28px; padding: 0 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: border-color .15s, background .15s;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .theme-toggle svg { width: 14px; height: 14px; display: block; }
 
-  /* header */
-  header { display: flex; align-items: baseline; justify-content: space-between;
+  /* header — Liquid-Glass-style translucent bar, floats above the content layer */
+  header { position: sticky; top: 0; z-index: 10;
+           display: flex; align-items: center; justify-content: space-between;
            flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--line);
-           padding-bottom: 18px; margin-bottom: 26px; }
-  h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+           padding-top: 16px; padding-bottom: 16px; margin-bottom: 28px;
+           background: var(--header-bg); backdrop-filter: blur(20px) saturate(1.6);
+           -webkit-backdrop-filter: blur(20px) saturate(1.6); }
+  h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
   h1 span { color: var(--muted); font-weight: 400; }
-  .conn { font-family: var(--mono); font-size: 12px; color: var(--muted);
+  .conn { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
           display: flex; align-items: center; gap: 7px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .dot.live { background: var(--secure); box-shadow: 0 0 0 3px rgba(63,182,139,.18); }
-  .dot.mock { background: var(--pending); box-shadow: 0 0 0 3px rgba(224,164,88,.18); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--secure); box-shadow: 0 0 0 3px rgba(48,209,138,.18); }
+  .dot.mock { background: var(--pending); box-shadow: 0 0 0 3px rgba(232,179,57,.18); }
+  main { display: block; padding-top: 4px; }
 
   /* status card */
   .status {
-    background: linear-gradient(180deg, var(--surface2), var(--surface));
-    border: 1px solid var(--line); border-radius: 14px;
-    box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 8px 24px -12px rgba(0,0,0,.5);
-    padding: 24px 26px; margin-bottom: 26px;
+    background: var(--surface);
+    border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 10px 30px -16px rgba(0,0,0,.45);
+    padding: 22px 24px; margin-bottom: 24px; margin-top: 20px;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
   }
-  .status .box-id { font-family: var(--mono); color: var(--muted); font-size: 13px; letter-spacing: .04em; }
-  .status .state { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px; }
+  .status .box-id { font-family: var(--mono); color: var(--muted); font-size: 12.5px; letter-spacing: .04em; }
+  .status .state { font-size: 28px; font-weight: 650; letter-spacing: -0.015em; margin-top: 3px; }
   .state.secure  { color: var(--secure); }
   .state.tampered{ color: var(--tamper); }
-  .seal { width: 58px; height: 58px; border-radius: 50%; border: 2px solid currentColor;
-          display: grid; place-items: center; font-size: 24px; }
+  .seal { width: 46px; height: 46px; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent);
+          display: grid; place-items: center; }
   .seal.secure  { color: var(--secure); }
   .seal.tampered{ color: var(--tamper); animation: pulse 1.1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
 
   /* controls */
-  .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 26px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
   button {
-    font-family: var(--sans); font-size: 13.5px; font-weight: 550;
+    font-family: var(--sans); font-size: 13px; font-weight: 590;
     background: var(--surface2); color: var(--text);
-    border: 1px solid var(--line); border-radius: 9px;
-    padding: 10px 16px; cursor: pointer; transition: border-color .15s, background .15s;
+    border: 1px solid var(--line); border-radius: 8px;
+    height: 32px; padding: 0 14px; cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
   }
-  button:hover { border-color: var(--secure); }
+  button:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+  button:active { transform: scale(.97); }
   button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
+  button.primary:hover { background: color-mix(in srgb, var(--accent) 88%, #000); border-color: color-mix(in srgb, var(--accent) 88%, #000); }
+  button:disabled { opacity: .5; cursor: default; transform: none; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .verdict { font-family: var(--mono); font-size: 13px; margin-bottom: 20px; min-height: 20px; }
+  .verdict { font-family: var(--mono); font-size: 12.5px; margin-bottom: 20px; min-height: 20px; }
   .verdict.ok   { color: var(--secure); }
   .verdict.bad  { color: var(--tamper); }
 
-  /* ledger filter group */
-  .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  /* ledger filter group — a macOS-style segmented control */
+  .filters { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
   .filters .flabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-                      letter-spacing: .1em; color: var(--muted); margin-right: 2px; }
+                      letter-spacing: .1em; color: var(--muted); }
+  .segmented { display: inline-flex; gap: 2px; background: var(--surface2);
+               border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
   .filter-btn {
     font-family: var(--sans); font-size: 12.5px; font-weight: 550;
-    background: var(--surface); color: var(--muted);
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 14px; cursor: pointer; transition: all .15s;
+    background: transparent; color: var(--muted);
+    border: 1px solid transparent; border-radius: 7px;
+    height: 26px; padding: 0 12px; cursor: pointer; transition: all .15s;
   }
-  .filter-btn:hover { color: var(--text); border-color: var(--accent); }
-  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .filter-btn:hover { color: var(--text); }
+  .filter-btn.active { background: var(--surface); color: var(--text);
+                        box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  :root[data-theme="light"] .filter-btn.active { box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 
   /* the event ledger — the signature element */
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em;
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
        color: var(--muted); margin-bottom: 14px; font-weight: 600; }
   .chain { list-style: none; position: relative; }
   .link {
     position: relative; background: var(--surface); border: 1px solid var(--line);
-    border-left: 4px solid var(--secure); border-radius: 12px;
-    box-shadow: 0 4px 14px -10px rgba(0,0,0,.6);
-    padding: 20px 22px; margin-bottom: 14px;
+    border-left: 3px solid var(--secure); border-radius: 12px;
+    box-shadow: 0 4px 14px -10px rgba(0,0,0,.5);
+    padding: 18px 20px; margin-bottom: 12px;
+    transition: border-color .15s;
   }
   .link.tamper { border-left-color: var(--tamper); }
   .link.fail   { border-left-color: var(--tamper); }
@@ -148,32 +201,6 @@
   .enroll-row { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .enroll-value { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
 
-  /* authorized users -- deliberately plain, no hash/anchor noise */
-  .users-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 26px; }
-  .user-card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap;
-  }
-  .user-name { font-size: 15px; font-weight: 600; }
-  .user-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-
-  .pin-gate {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    padding: 14px 16px; margin-bottom: 26px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  }
-  .pin-icon { font-size: 16px; }
-  .pin-input {
-    font-family: var(--mono); font-size: 18px; letter-spacing: .3em;
-    background: var(--surface2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 8px; padding: 8px 12px; width: 90px; text-align: center;
-  }
-  .pin-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .pin-error { font-family: var(--mono); font-size: 12px; color: var(--tamper); }
-  .users-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-  .users-toolbar button { font-size: 12px; padding: 6px 12px; }
-
   .empty { color: var(--muted); font-family: var(--mono); font-size: 13px; padding: 30px 0; }
   footer { margin-top: 34px; color: var(--muted); font-size: 12px; font-family: var(--mono);
            border-top: 1px solid var(--line); padding-top: 16px; }
@@ -183,15 +210,21 @@
 <body>
   <header>
     <h1>Custody Chain <span>/ Box Monitor</span></h1>
-    <div class="conn"><span id="dot" class="dot"></span><span id="conn-text">connecting…</span></div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div class="conn"><span id="dot" class="dot"></span><span id="conn-text">connecting…</span></div>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode"></button>
+    </div>
   </header>
 
+  <main>
   <section class="status" id="status">
     <div>
       <div class="box-id" id="box-id">BOX-001</div>
       <div class="state secure" id="state">SECURE</div>
     </div>
-    <div class="seal secure" id="seal">✓</div>
+    <div class="seal secure" id="seal">
+      <svg id="seal-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"></polyline></svg>
+    </div>
   </section>
 
   <div class="controls">
@@ -201,45 +234,45 @@
   </div>
   <div class="verdict" id="verdict"></div>
 
-  <h2>Authorized users</h2>
-  <div id="users-locked" class="pin-gate">
-    <span class="pin-icon">🔒</span>
-    <input id="pin-input" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*"
-           maxlength="4" placeholder="····" autocomplete="off" />
-    <button class="primary" onclick="tryUnlockUsers()">Unlock</button>
-    <span class="pin-error" id="pin-error"></span>
-  </div>
-  <div id="users-unlocked" style="display:none">
-    <div class="users-toolbar"><button onclick="lockUsers()">🔒 Hide again</button></div>
-    <div id="users" class="users-list"></div>
-  </div>
-
   <h2>Event ledger — newest first</h2>
   <div class="filters" role="group" aria-label="Ledger filter">
     <span class="flabel">Filter</span>
-    <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">Show all</button>
-    <button class="filter-btn" data-filter="tamper" onclick="setFilter('tamper')">Show only tamper</button>
-    <button class="filter-btn" data-filter="registrations" onclick="setFilter('registrations')">Show only registrations</button>
-    <button class="filter-btn" data-filter="offchain" onclick="setFilter('offchain')">Show all off-chain</button>
+    <div class="segmented">
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+      <button class="filter-btn" data-filter="tamper" onclick="setFilter('tamper')">Tamper</button>
+      <button class="filter-btn" data-filter="registrations" onclick="setFilter('registrations')">Registrations</button>
+      <button class="filter-btn" data-filter="offchain" onclick="setFilter('offchain')">Off-chain</button>
+    </div>
   </div>
   <ul class="chain" id="chain"><li class="empty">Loading records…</li></ul>
 
   <footer id="foot">Reading from backend at <span id="api">http://localhost:3000</span></footer>
+  </main>
 
 <script>
+  // ---- theme toggle ---------------------------------------------------------
+  const SUN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"></path></svg>';
+  const MOON_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.9a8.5 8.5 0 1 1-9.3-12 7 7 0 0 0 9.3 12z"></path></svg>';
+  function paintThemeButton() {
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    document.getElementById("theme-toggle").innerHTML = isLight
+      ? `${MOON_ICON}Dark`
+      : `${SUN_ICON}Light`;
+  }
+  function toggleTheme() {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+    paintThemeButton();
+  }
+  paintThemeButton();
+
   // ---- config -------------------------------------------------------------
   // Tailscale MagicDNS hostname -- stable regardless of which WiFi this page
   // (or the backend's Mac) is on, so this never needs updating when the LAN
   // IP changes. Requires the viewing device to also be on the same Tailnet.
   const API = `http://saroops-macbook-air.tailb523e7.ts.net:3000`;
   document.getElementById("api").textContent = API;
-
-  // Gates the "Authorized users" panel. This is a client-side speed bump for
-  // a casual glance at the screen, not real access control -- anyone reading
-  // the page source sees it. Change it here.
-  const USERS_PIN = "1290";
-  let usersUnlocked = false;
-  let lastUsersRecords = [];
 
   let mockMode = false;
   const mockChain = [];                     // used only if backend is unreachable
@@ -258,73 +291,15 @@
       setConn(true);
       const records = normalise(rows);
       renderChain(records);
-      renderUsers(records);
       renderStatus(records.length && records[0].tamper ? "TAMPERED" : "SECURE");
       if (records.length) document.getElementById("box-id").textContent = records[0].device_id;
     } catch (e) {
       mockMode = true;
       setConn(false);
       renderChain(mockChain);
-      renderUsers(mockChain);
       renderStatus(mockChain.some(r => r.tamper) ? "TAMPERED" : "SECURE");
     }
   }
-
-  // Authorized-users panel -- just who's enrolled, no hash/anchor clutter,
-  // and hidden behind USERS_PIN until unlocked. records are newest-first
-  // already, so the first occurrence of a username is its most recent
-  // enrollment (re-enrolling updates the slot shown).
-  function renderUsers(records) {
-    lastUsersRecords = records;
-    if (usersUnlocked) paintUsers(records);
-  }
-
-  function paintUsers(records) {
-    const el = document.getElementById("users");
-    const seen = new Map();
-    for (const r of records) {
-      if (r.enrolledUser && !seen.has(r.enrolledUser)) {
-        seen.set(r.enrolledUser, { slot: r.biometricSlot, when: r.timestamp });
-      }
-    }
-    if (seen.size === 0) {
-      el.innerHTML = '<div class="empty">No users enrolled yet.</div>';
-      return;
-    }
-    el.innerHTML = [...seen.entries()].map(([name, info]) => `
-      <div class="user-card">
-        <span class="user-name">${escapeHtml(name)}</span>
-        <span class="user-meta">${info.slot != null ? `fingerprint slot ${escapeHtml(info.slot)} &middot; ` : ""}enrolled ${formatIST(info.when)}</span>
-      </div>`).join("");
-  }
-
-  function tryUnlockUsers() {
-    const input = document.getElementById("pin-input");
-    const err = document.getElementById("pin-error");
-    if (input.value === USERS_PIN) {
-      usersUnlocked = true;
-      document.getElementById("users-locked").style.display = "none";
-      document.getElementById("users-unlocked").style.display = "";
-      input.value = "";
-      err.textContent = "";
-      paintUsers(lastUsersRecords);
-    } else {
-      err.textContent = "Wrong PIN";
-      input.value = "";
-      input.focus();
-    }
-  }
-
-  function lockUsers() {
-    usersUnlocked = false;
-    document.getElementById("users-unlocked").style.display = "none";
-    document.getElementById("users-locked").style.display = "";
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const input = document.getElementById("pin-input");
-    if (input) input.addEventListener("keydown", e => { if (e.key === "Enter") tryUnlockUsers(); });
-  });
 
   // backend (GET /events) returns DB rows newest-first already
   function normalise(rows) {
@@ -360,12 +335,14 @@
     }[c]));
   }
 
+  const CHECK_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12.5 9.5 18 20 6"></polyline></svg>';
+  const ALERT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="7" x2="12" y2="13.5"></line><circle cx="12" cy="17.2" r="0.1" fill="currentColor"></circle></svg>';
   function renderStatus(state) {
     const secure = state !== "TAMPERED";
     const stateEl = document.getElementById("state"), seal = document.getElementById("seal");
     stateEl.textContent = secure ? "SECURE" : "TAMPERED";
     stateEl.className = "state " + (secure ? "secure" : "tampered");
-    seal.textContent = secure ? "✓" : "!";
+    seal.innerHTML = secure ? CHECK_ICON : ALERT_ICON;
     seal.className = "seal " + (secure ? "secure" : "tampered");
   }
 
@@ -428,13 +405,11 @@
       // lat/lng land in the Vault contract's own storage only for anchored
       // (tamper) events -- everything else has them off-chain in Postgres only.
       const hasGeo = r.lat !== null && r.lat !== undefined && r.lng !== null && r.lng !== undefined;
-      const geoOnChain = hasGeo && r.locationOnChain;
       const geoRow = hasGeo ? `
         <div class="geo-row">
           <span class="hash-label">Location</span>
           <span class="geo-value">${Number(r.lat).toFixed(6)}, ${Number(r.lng).toFixed(6)}</span>
           <a href="https://maps.google.com/?q=${r.lat},${r.lng}" target="_blank">map ↗</a>
-          <span class="geo-badge ${geoOnChain ? "on_chain" : "off_chain"}">${geoOnChain ? "on-chain" : "off-chain only"}</span>
         </div>` : "";
 
       // who got enrolled is deliberately NOT shown here -- see the PIN-gated

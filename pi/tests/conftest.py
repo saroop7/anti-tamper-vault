@@ -9,5 +9,6 @@ from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-for name in ("gpio_io", "fingerprint_auth", "face_auth", "tamper_monitor", "tft_display", "rtc_clock"):
+for name in ("gpio_io", "fingerprint_auth", "face_auth", "tamper_monitor", "tft_display", "rtc_clock",
+             "enrollment_worker"):
     sys.modules[name] = MagicMock(name=name)

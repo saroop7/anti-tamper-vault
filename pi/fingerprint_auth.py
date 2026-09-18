@@ -12,6 +12,7 @@ import time
 import serial
 import adafruit_fingerprint
 import config
+from sensor_lock import fingerprint_lock
 
 
 class FingerprintResult:
@@ -33,28 +34,38 @@ def verify_owner(timeout=None):
     as a failure -- we only ever accept config.OWNER_FINGERPRINT_ID.
     """
     timeout = timeout if timeout is not None else config.FINGERPRINT_TIMEOUT_S
+
+    # Don't block indefinitely if an enrollment is mid-flight on the same
+    # sensor -- fail fast so a denied/retried access attempt isn't left
+    # hanging for as long as someone else's enrollment takes.
+    if not fingerprint_lock.acquire(timeout=2):
+        return FingerprintResult(False, reason="sensor_busy_enrolling")
+
     try:
-        finger = _connect()
-    except Exception as e:
-        return FingerprintResult(False, reason=f"sensor_unavailable: {e}")
+        try:
+            finger = _connect()
+        except Exception as e:
+            return FingerprintResult(False, reason=f"sensor_unavailable: {e}")
 
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if finger.get_image() == adafruit_fingerprint.OK:
-            break
-        time.sleep(0.1)
-    else:
-        return FingerprintResult(False, reason="timeout_waiting_for_finger")
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if finger.get_image() == adafruit_fingerprint.OK:
+                break
+            time.sleep(0.1)
+        else:
+            return FingerprintResult(False, reason="timeout_waiting_for_finger")
 
-    if finger.image_2_tz(1) != adafruit_fingerprint.OK:
-        return FingerprintResult(False, reason="image_conversion_failed")
+        if finger.image_2_tz(1) != adafruit_fingerprint.OK:
+            return FingerprintResult(False, reason="image_conversion_failed")
 
-    if finger.finger_search() != adafruit_fingerprint.OK:
-        return FingerprintResult(False, reason="no_match_in_database")
+        if finger.finger_search() != adafruit_fingerprint.OK:
+            return FingerprintResult(False, reason="no_match_in_database")
 
-    matched_id = finger.finger_id
-    confidence = finger.confidence
-    if matched_id != config.OWNER_FINGERPRINT_ID:
-        return FingerprintResult(False, confidence=confidence, reason=f"matched_wrong_slot_{matched_id}")
+        matched_id = finger.finger_id
+        confidence = finger.confidence
+        if matched_id != config.OWNER_FINGERPRINT_ID:
+            return FingerprintResult(False, confidence=confidence, reason=f"matched_wrong_slot_{matched_id}")
 
-    return FingerprintResult(True, confidence=confidence)
+        return FingerprintResult(True, confidence=confidence)
+    finally:
+        fingerprint_lock.release()

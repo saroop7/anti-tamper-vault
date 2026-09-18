@@ -95,3 +95,6 @@ SMS_ALERT_NUMBERS = [n.strip() for n in os.getenv("SMS_ALERT_NUMBERS", "+9181223
 # ---- last-known GPS fix (static for now -- wire a GPS module later) -----
 DEFAULT_LAT = float(os.getenv("DEFAULT_LAT", "12.9716"))
 DEFAULT_LNG = float(os.getenv("DEFAULT_LNG", "77.5946"))
+
+# ---- frontend-triggered enrollment queue --------------------------------
+ENROLLMENT_POLL_INTERVAL_S = float(os.getenv("ENROLLMENT_POLL_INTERVAL_S", "3"))

@@ -61,5 +61,20 @@ export async function initDb() {
     );
   `);
 
+  // A queue the frontend writes to and the Pi's access_control daemon polls
+  // -- lets "add new user" start on the frontend but actually run on the
+  // physical fingerprint/camera hardware, one request at a time.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS enrollment_requests (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT        NOT NULL,
+      status       TEXT        NOT NULL DEFAULT 'pending', -- pending | in_progress | done | failed
+      error        TEXT,
+      enrollment_id INTEGER REFERENCES enrollments(id),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
   console.log("DB ready");
 }
