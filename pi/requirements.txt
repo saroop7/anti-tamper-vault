@@ -1,0 +1,7 @@
+gpiozero
+pyserial
+adafruit-circuitpython-fingerprint
+opencv-contrib-python
+numpy
+requests
+python-dotenv

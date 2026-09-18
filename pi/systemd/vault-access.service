@@ -1,0 +1,16 @@
+[Unit]
+Description=Vault access control (time window + fingerprint + face)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Anti-tamper-vault/pi
+EnvironmentFile=/home/pi/Anti-tamper-vault/pi/.env
+ExecStart=/home/pi/Anti-tamper-vault/pi/venv/bin/python3 access_control.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
