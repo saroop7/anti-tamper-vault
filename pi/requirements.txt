@@ -5,3 +5,10 @@ opencv-contrib-python
 numpy
 requests
 python-dotenv
+pigpio
+smbus2
+Pillow
+st7735
+# picamera2 depends on libcamera system bindings that pip can't build --
+# install via apt instead: sudo apt install -y python3-picamera2
+# then create the venv with --system-site-packages so it's importable here.

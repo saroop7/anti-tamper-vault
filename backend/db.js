@@ -45,5 +45,21 @@ export async function initDb() {
     );
   `);
 
+  // Biometric enrollments (fingerprint slot + face capture from the vault's
+  // hardware) -- kept separate from `events` (the tamper/access audit log)
+  // and from `users` (email/password login accounts). Different concern,
+  // different lifecycle: this is "who is physically authorized," not a log.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS enrollments (
+      id               SERIAL PRIMARY KEY,
+      device_id        TEXT        NOT NULL,
+      name             TEXT        NOT NULL,
+      fingerprint_slot INTEGER     NOT NULL,
+      face_id          TEXT,
+      firmware_ver     TEXT,
+      enrolled_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
   console.log("DB ready");
 }

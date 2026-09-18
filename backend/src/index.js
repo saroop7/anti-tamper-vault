@@ -4,13 +4,17 @@ import dotenv from "dotenv";
 import { initDb } from "../db.js";
 import { router as eventsRouter } from "../routes/events.js";
 import { router as usersRouter } from "../routes/users.js";
+import { router as enrollmentsRouter } from "../routes/enrollments.js";
 dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Raised from the 100kb default -- enrollment payloads carry a base64 JPEG
+// face capture, which a small default limit would reject with 413.
+app.use(express.json({ limit: "5mb" }));
 app.use("/events", eventsRouter);
 app.use("/users", usersRouter);
+app.use("/enrollments", enrollmentsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;

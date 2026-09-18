@@ -20,7 +20,7 @@ def _post(payload):
         print(f"[backend_client] failed to log event: {e}")
 
 
-def log_event(status, tamper, device_ts, sensor_data=None):
+def log_event(status, tamper, device_ts, sensor_data=None, lat=None, lng=None):
     payload = {
         "device_id": config.DEVICE_ID,
         "device_ts": device_ts,
@@ -28,4 +28,10 @@ def log_event(status, tamper, device_ts, sensor_data=None):
         "tamper": tamper,
         "sensor_data": sensor_data or {},
     }
+    # The backend rejects an explicit null for lat/lng ("lat must be a
+    # number") -- omit the keys entirely rather than sending None.
+    if lat is not None:
+        payload["lat"] = lat
+    if lng is not None:
+        payload["lng"] = lng
     threading.Thread(target=_post, args=(payload,), daemon=True).start()

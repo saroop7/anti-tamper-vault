@@ -21,6 +21,8 @@ import gpio_io
 import fingerprint_auth
 import face_auth
 import backend_client
+import tamper_monitor
+import tft_display
 from time_window import is_within_window
 
 _recent_denials = deque()  # timestamps of denials, for lockout tracking
@@ -69,6 +71,8 @@ def grant():
     print("[access_control] GRANTED -- unlocking")
     backend_client.log_event(status="access_granted", tamper=False,
                               device_ts=_now_iso(), sensor_data={"owner": config.OWNER_NAME})
+    from rtc_clock import now as _rtc_now
+    tft_display.update(_rtc_now(), "SUCCESSFUL ENTRY")
     gpio_io.unlock()
 
 
@@ -97,6 +101,8 @@ def handle_access_request():
 def main():
     print(f"[access_control] ready -- owner={config.OWNER_NAME}, "
           f"windows={config.ACCESS_WINDOWS}, device_id={config.DEVICE_ID}")
+    tamper_monitor.start()  # RTC/TFT clock + continuous accelerometer watch,
+                             # runs independently of the button-triggered flow below
     while True:
         gpio_io.wait_for_request()
         try:

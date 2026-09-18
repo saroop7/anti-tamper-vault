@@ -2,3 +2,8 @@ node_modules/
 .env
 contracts/out/
 contracts/cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+pi/enrollments.json
+pi/authorized_users.json

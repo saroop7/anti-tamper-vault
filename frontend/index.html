@@ -197,6 +197,7 @@
   <div class="controls">
     <button class="primary" onclick="verifyChain()">Verify integrity</button>
     <button onclick="refresh()">Refresh</button>
+    <button onclick="location.href='register.html'">User registrations →</button>
   </div>
   <div class="verdict" id="verdict"></div>
 
@@ -218,6 +219,7 @@
     <span class="flabel">Filter</span>
     <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">Show all</button>
     <button class="filter-btn" data-filter="tamper" onclick="setFilter('tamper')">Show only tamper</button>
+    <button class="filter-btn" data-filter="registrations" onclick="setFilter('registrations')">Show only registrations</button>
     <button class="filter-btn" data-filter="offchain" onclick="setFilter('offchain')">Show all off-chain</button>
   </div>
   <ul class="chain" id="chain"><li class="empty">Loading records…</li></ul>
@@ -226,11 +228,10 @@
 
 <script>
   // ---- config -------------------------------------------------------------
-  // Same host this page was loaded from, port 3000 -- so it works whether
-  // this is opened as localhost:8088 or from another device on the LAN via
-  // e.g. 192.168.x.x:8088 (a hardcoded "localhost" would break for anyone
-  // opening it from a different machine, since localhost means themselves).
-  const API = `http://${window.location.hostname}:3000`;
+  // Tailscale MagicDNS hostname -- stable regardless of which WiFi this page
+  // (or the backend's Mac) is on, so this never needs updating when the LAN
+  // IP changes. Requires the viewing device to also be on the same Tailnet.
+  const API = `http://saroops-macbook-air.tailb523e7.ts.net:3000`;
   document.getElementById("api").textContent = API;
 
   // Gates the "Authorized users" panel. This is a client-side speed bump for
@@ -339,8 +340,8 @@
       lat:         r.lat,
       lng:         r.lng,
       locationOnChain: !!r.location_onchain,
-      enrolledUser: r.status === "user_registered" ? (r.sensor_data && r.sensor_data.enrolled_user) : null,
-      biometricSlot: r.status === "user_registered" ? (r.sensor_data && r.sensor_data.biometric_slot) : null,
+      enrolledUser: r.status === "user_registered" ? (r.sensor_data && r.sensor_data.name) : null,
+      biometricSlot: r.status === "user_registered" ? (r.sensor_data && r.sensor_data.fingerprint_slot) : null,
     }));
   }
 
@@ -398,6 +399,7 @@
 
   function applyFilter(records) {
     if (filterMode === "tamper") return records.filter(r => r.tamper);
+    if (filterMode === "registrations") return records.filter(r => r.event_type === "user_registered");
     if (filterMode === "offchain") return records.filter(r => r.anchor === "off_chain");
     return records;
   }
@@ -409,6 +411,7 @@
     const filtered = applyFilter(records);
     if (!filtered.length) {
       const msg = filterMode === "tamper" ? "No tamper events match this filter."
+                : filterMode === "registrations" ? "No user registrations match this filter."
                 : filterMode === "offchain" ? "No off-chain records match this filter."
                 : "No events yet. Trigger one to see the ledger build.";
       ul.innerHTML = `<li class="empty">${msg}</li>`;
