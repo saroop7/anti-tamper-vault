@@ -122,8 +122,11 @@ def capture_clear_face(should_cancel=lambda: False):
             picam2.stop()
             picam2.close()
             raise EnrollmentCancelled()
-        frame_rgb = picam2.capture_array()
-        frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+        # picamera2's "RGB888" format is mislabeled -- it actually delivers
+        # frames in BGR byte order already, which is what cv2 wants. Treating
+        # it as RGB and converting with COLOR_RGB2BGR swaps the channels a
+        # second time and produces a blue-tinted photo.
+        frame_bgr = picam2.capture_array()
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         total_frames += 1
 

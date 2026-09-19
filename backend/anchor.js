@@ -60,8 +60,26 @@ function getContract() {
   return contract;
 }
 
+// Serializes anchor calls onto one queue -- a burst of tamper events close
+// together (e.g. a vibration hit followed by an unauthorized fingerprint
+// attempt seconds later) would otherwise each start their own on-chain tx
+// from the same wallet before the previous one confirms. Sepolia block
+// times mean tx.wait() can take 12s+, so several unconfirmed transactions
+// from one address can pile up at once -- which is exactly what Alchemy's
+// "in-flight transaction limit reached for delegated accounts" error is
+// rejecting. Chaining onto this queue caps it at one in-flight tx, always.
+let anchorQueue = Promise.resolve();
+
 // Anchors a hash + location on-chain. Returns { txHash, onchainId, contract } or null if no contract.
-export async function anchorHash(dataHash, deviceTsSeconds, lat, lng) {
+export function anchorHash(dataHash, deviceTsSeconds, lat, lng) {
+  const run = anchorQueue.then(() => doAnchor(dataHash, deviceTsSeconds, lat, lng));
+  // keep the queue alive even if this anchor attempt fails, so the next
+  // queued call still runs instead of the whole chain jamming on a rejection
+  anchorQueue = run.catch(() => {});
+  return run;
+}
+
+async function doAnchor(dataHash, deviceTsSeconds, lat, lng) {
   const c = getContract();
   if (!c) return null;
   const tx = await c.logEvent(dataHash, deviceTsSeconds, toFixedPoint(lat), toFixedPoint(lng));

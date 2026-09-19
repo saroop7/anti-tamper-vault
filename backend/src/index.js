@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { initDb } from "../db.js";
+import { sseHandler } from "../sse.js";
 import { router as eventsRouter } from "../routes/events.js";
 import { router as usersRouter } from "../routes/users.js";
 import { router as enrollmentsRouter } from "../routes/enrollments.js";
@@ -18,6 +19,8 @@ app.use("/users", usersRouter);
 app.use("/enrollments", enrollmentsRouter);
 app.use("/enrollment-requests", enrollmentRequestsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true }));
+// frontend pages subscribe here for push updates instead of pure polling
+app.get("/stream", sseHandler);
 
 const PORT = process.env.PORT || 3000;
 const istFormatter = new Intl.DateTimeFormat("en-IN", {

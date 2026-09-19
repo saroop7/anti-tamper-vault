@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { broadcast } from "../sse.js";
 
 export const router = Router();
 
@@ -21,6 +22,7 @@ router.post("/", async (req, res) => {
     [name.trim()]
   );
   console.log(`[enrollment_requests] queued "${name.trim()}" (source ${req.ip})`);
+  broadcast("enrollment-requests");
   res.status(201).json(insert.rows[0]);
 });
 
@@ -43,6 +45,7 @@ router.post("/:id/cancel", async (req, res) => {
     return res.status(409).json({ error: "already finished or not found" });
   }
   console.log(`[enrollment_requests] #${req.params.id} cancelled`);
+  broadcast("enrollment-requests");
   res.json(rows[0]);
 });
 
@@ -79,5 +82,6 @@ router.post("/:id/status", requireKey, async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: "not found" });
   console.log(`[enrollment_requests] #${req.params.id} -> ${status}`);
+  broadcast("enrollment-requests");
   res.json(rows[0]);
 });

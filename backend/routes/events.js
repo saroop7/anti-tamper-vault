@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { hashEvent, anchorHash, verifyOnChain } from "../anchor.js";
+import { broadcast } from "../sse.js";
 
 export const router = Router();
 
@@ -44,6 +45,7 @@ router.post("/", requireKey, async (req, res) => {
   );
   const id = insert.rows[0].id;
   console.log(`[${formatIST(new Date())}] event #${id} received (${status}${tamper ? ", TAMPER" : ""})`);
+  broadcast("events"); // wake up any dashboards watching /stream
 
   // Anchor only tamper events (checkpoints can be added later).
   if (tamper) {
@@ -56,6 +58,7 @@ router.post("/", requireKey, async (req, res) => {
           [result.txHash, result.onchainId, result.contract, id]
         );
         console.log(`[${formatIST(new Date())}] event #${id} anchored on-chain (tx ${result.txHash})`);
+        broadcast("events"); // the onchain_tx/anchor badge just changed too
       }
     } catch (e) {
       console.error(`[${formatIST(new Date())}] anchor failed:`, e.message); // event still saved off-chain

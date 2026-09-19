@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { broadcast } from "../sse.js";
 
 export const router = Router();
 
@@ -29,6 +30,7 @@ router.post("/", requireKey, async (req, res) => {
   // shows up as 100.x.x.x, so this line doubles as a live "did it really
   // come over Tailscale" check when you're watching the terminal.
   console.log(`[enrollments] #${insert.rows[0].id} "${name}" enrolled from ${device_id} (source ${req.ip})`);
+  broadcast("enrollments");
 
   res.status(201).json(insert.rows[0]);
 });
